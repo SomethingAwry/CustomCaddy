@@ -1,0 +1,34 @@
+name: Build Caddy and check artifact
+on: [push]
+jobs:
+  build:
+    # will build for linux/amd64
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: azolfagharj/action-caddy-builder@v1
+        id: build
+        with:
+          caddy-version: latest
+          modules: |
+            github.com/caddy-dns/porkbun
+            github.com/caddyserver/forwardproxy
+      - uses: actions/upload-artifact@v4
+        with:
+          name: caddy-binary
+          path: ${{ steps.build.outputs.caddy-path }}
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: caddy-binary
+      - name: Run built Caddy
+        run: |
+          CADDY_BIN=$(find . -name 'caddy_*' -type f | head -1)
+          chmod +x "$CADDY_BIN"
+          "$CADDY_BIN" version
+          "$CADDY_BIN" list-modules
